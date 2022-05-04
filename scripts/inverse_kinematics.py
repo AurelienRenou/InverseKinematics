@@ -2,6 +2,7 @@ from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
 import biorbd
+import bioviz
 from load_experimental_data import C3dData
 from utils import get_range_q
 
@@ -45,11 +46,17 @@ q = np.zeros((biorbd_model.nbQ(), nb_frames))
 for ii in range(nb_frames):
     print(f" ****   Frame {ii}  ****")
     x0 = np.zeros((biorbd_model.nbQ())) if ii == 0 else q[:, ii - 1]
+    method = 'trust-constr' if ii == 0 else 'SLSQP'
     sol = minimize(fun=marker_quad_diff,
                    args=(biorbd_model, markers_data[:, :, ii]),
                    bounds=bounds,
                    x0=x0,
-                   method='trust-constr', tol=1e-6, options=dict(disp=True))
+                   method=method, tol=1e-6, options=dict(disp=False))
     q[:, ii] = sol.x
 print(f" Inverse Kinematics done for all frames")
 
+
+b = bioviz.Viz(loaded_model=biorbd_model, show_muscles=False)
+b.load_experimental_markers(markers_data)
+b.load_movement(q)
+b.exec()
