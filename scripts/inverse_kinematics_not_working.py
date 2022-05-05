@@ -7,8 +7,8 @@ from casadi import MX, sumsqr, norm_2, Function, jacobian
 from load_experimental_data import C3dData
 from utils import get_range_q
 
-biorbd_model_path = Path('/home/puchaud/Projets_Python/bioptim_exo/models/wu_converted_definitif_without_modif.bioMod')
-c3d_path_file = Path('/home/puchaud/Projets_Python/bioptim_exo/data/F0_aisselle_05.c3d')
+biorbd_model_path = Path("/home/puchaud/Projets_Python/bioptim_exo/models/wu_converted_definitif_without_modif.bioMod")
+c3d_path_file = Path("/home/puchaud/Projets_Python/bioptim_exo/data/F0_aisselle_05.c3d")
 
 biorbd_model = biorbd.Model(str(biorbd_model_path.absolute()))
 biorbd_model_casadi = biorbd_casadi.Model(str(biorbd_model_path.absolute()))
@@ -73,14 +73,14 @@ def jac_marker_quad_diff(q, biorbd_model: biorbd.Model, model_xp: np.array):
         raise NotImplementedError("Not implemented for this model")
 
 
-def DM_to_array(q,func):
+def DM_to_array(q, func):
     return np.squeeze(func(q).toarray())
 
 
 q_sym = MX.sym("q", biorbd_model.nbQ(), 1)
 m_sym = MX.sym("m", 3, biorbd_model.nbMarkers())
 
-J_func = marker_quad_diff(q_sym, biorbd_model_casadi, markers_data[:,:,0])
+J_func = marker_quad_diff(q_sym, biorbd_model_casadi, markers_data[:, :, 0])
 jac_func = jac_marker_quad_diff(q_sym, biorbd_model_casadi, markers_data[:, :, 0])
 bounds = tuple(get_range_q(biorbd_model))
 
@@ -91,11 +91,8 @@ for ii in range(nb_frames):
     J_func = lambda q: DM_to_array(q, marker_quad_diff(q_sym, biorbd_model_casadi, markers_data[:, :, ii]))
     jac_func = lambda q: DM_to_array(q, jac_marker_quad_diff(q_sym, biorbd_model_casadi, markers_data[:, :, ii]))
 
-    sol = minimize(fun=J_func,
-                   bounds=bounds,
-                   x0=x0,
-                   jac=jac_func,
-                   method='trust-constr', tol=1e-6, options=dict(disp=True))
+    sol = minimize(
+        fun=J_func, bounds=bounds, x0=x0, jac=jac_func, method="trust-constr", tol=1e-6, options=dict(disp=True)
+    )
     q[:, ii] = sol.x
 print(f" Inverse Kinematics done for all frames")
-
