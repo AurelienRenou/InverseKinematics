@@ -25,6 +25,7 @@ def get_range_q(biorbd_model: biorbd.Model):
         ranges[dof_nb, 1] = range_max
     return ranges
 
+
 def get_range_max_q(biorbd_model: biorbd.Model):
     """
 
@@ -46,6 +47,7 @@ def get_range_max_q(biorbd_model: biorbd.Model):
         ranges[dof_nb] = range_max
     return ranges
 
+
 def get_range_min_q(biorbd_model: biorbd.Model):
     """
 
@@ -66,6 +68,7 @@ def get_range_min_q(biorbd_model: biorbd.Model):
         range_min = biorbd_model.segment(seg_id).QRanges()[dof_id].min()
         ranges[dof_nb] = range_min
     return ranges
+
 
 def get_segment_and_dof_id_from_global_dof(biorbd_model: biorbd.Model, global_dof: int):
     """
