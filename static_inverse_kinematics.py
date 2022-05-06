@@ -28,6 +28,7 @@ class StaticInverseKinematics:
             self.biorbd_model.markerNames()[i].to_string() for i in range(len(self.biorbd_model.markerNames()))
         ]
         self.markers_data = self.c3d_data.trajectories
+        self.nbQ = self.biorbd_model.nbQ()
         self.nb_frames = self.c3d_data.nb_frames
         self.nb_markers = self.biorbd_model.nbMarkers()
         self.model_markers = np.zeros((3, self.nb_markers))
@@ -44,7 +45,7 @@ class StaticInverseKinematics:
             vect_pos_markers[m * 3:(m + 1) * 3] = mat_pos_markers[m].to_array()
 
         # return the sum of the squared differences between the model and the data
-        return vect_pos_markers - np.reshape(model_xp.T, (19*3,))  # todo: 19
+        return vect_pos_markers - np.reshape(model_xp.T, (len(model_xp[0])*3,))  
 
     def _marker_jac(self, q, model_xp):
         """
@@ -52,7 +53,7 @@ class StaticInverseKinematics:
         """
         mat_Jac = self.biorbd_model.technicalMarkersJacobian(q)
 
-        Jac = np.zeros((3 * self.nb_markers, self.biorbd_model.nbQ())) # todo:nb_q in self, modify the name
+        Jac = np.zeros((3 * self.nb_markers, self.nbQ))
         for m in range(self.nb_markers):
             Jac[m*3:(m+1)*3, :] = mat_Jac[m].to_array()
 
@@ -61,9 +62,6 @@ class StaticInverseKinematics:
     def solve(self, method: str = "lm"):
         bounds_max = np.squeeze(get_range_max_q(self.biorbd_model))
         bounds_min = np.squeeze(get_range_min_q(self.biorbd_model))
-        c3d_markers = self.c3d_data.marker_names
-        model_markers = [i.to_string() for i in self.biorbd_model.markerNames()]
-
         if method == "trf":
             for ii in range(1, self.nb_frames):
                 print(f" ****   Frame {ii}  ****")
