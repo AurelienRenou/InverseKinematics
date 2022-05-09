@@ -16,58 +16,15 @@ def get_range_q(biorbd_model: biorbd.Model):
     range_q
         The range of the q for each dof
     """
-    ranges = np.zeros((biorbd_model.nbQ(), 2))
+    min_ranges = np.zeros((biorbd_model.nbQ()))
+    max_ranges = np.zeros((biorbd_model.nbQ()))
     for dof_nb in range(biorbd_model.nbDof()):
         seg_id, dof_id = get_segment_and_dof_id_from_global_dof(biorbd_model, dof_nb)
         range_min = biorbd_model.segment(seg_id).QRanges()[dof_id].min()
         range_max = biorbd_model.segment(seg_id).QRanges()[dof_id].max()
-        ranges[dof_nb, 0] = range_min
-        ranges[dof_nb, 1] = range_max
-    return ranges
-
-
-def get_range_max_q(biorbd_model: biorbd.Model):
-    """
-
-
-    Parameters
-    ----------
-    biorbd_model: biorbd.Model
-        The biorbd model
-
-    Returns
-    -------
-    range_q
-        The range of the q for each dof
-    """
-    ranges = np.zeros((biorbd_model.nbQ(), 1))
-    for dof_nb in range(biorbd_model.nbDof()):
-        seg_id, dof_id = get_segment_and_dof_id_from_global_dof(biorbd_model, dof_nb)
-        range_max = biorbd_model.segment(seg_id).QRanges()[dof_id].max()
-        ranges[dof_nb] = range_max
-    return ranges
-
-
-def get_range_min_q(biorbd_model: biorbd.Model):
-    """
-
-
-    Parameters
-    ----------
-    biorbd_model: biorbd.Model
-        The biorbd model
-
-    Returns
-    -------
-    range_q
-        The range of the q for each dof
-    """
-    ranges = np.zeros((biorbd_model.nbQ(), 1))
-    for dof_nb in range(biorbd_model.nbDof()):
-        seg_id, dof_id = get_segment_and_dof_id_from_global_dof(biorbd_model, dof_nb)
-        range_min = biorbd_model.segment(seg_id).QRanges()[dof_id].min()
-        ranges[dof_nb] = range_min
-    return ranges
+        min_ranges[dof_nb] = range_min
+        max_ranges[dof_nb] = range_max
+    return min_ranges, max_ranges
 
 
 def get_segment_and_dof_id_from_global_dof(biorbd_model: biorbd.Model, global_dof: int):

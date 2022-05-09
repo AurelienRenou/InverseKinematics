@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import minimize
 import biorbd
 import bioviz
-from scripts.utils import get_range_q, get_range_max_q, get_range_min_q
+from scripts.utils import get_range_q
 from scripts.load_experimental_data import C3dData
 import scipy
 
@@ -34,6 +34,7 @@ class StaticInverseKinematics:
 
         self.model_markers = np.zeros((3, self.nb_markers))  # We initialize this attributes
         self.q = np.zeros((self.biorbd_model.nbQ(), self.nb_frames))
+        self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
 
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray, idx_to_remove):
         """
