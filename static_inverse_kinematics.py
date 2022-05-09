@@ -36,7 +36,7 @@ class StaticInverseKinematics:
         self.q = np.zeros((self.biorbd_model.nbQ(), self.nb_frames))
         self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
 
-    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray, idx_to_remove):
+    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Compute the difference between the marker position in the model and the position in the data
         """
@@ -49,7 +49,7 @@ class StaticInverseKinematics:
         # return the vector of the squared differences between the model and the data
         return vect_pos_markers - np.reshape(xp_markers.T, (self.nb_markers * 3,))
 
-    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray, n_frame: int):
+    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         """
         mat_jac = self.biorbd_model.technicalMarkersJacobian(q)
@@ -60,7 +60,33 @@ class StaticInverseKinematics:
 
         return jac
 
-    def solve(self, method: str = "lm"):
+    def optimize(self, n_frame: int, method: str, bounds: tuple() = None):
+        print(f" ****   Frame {n_frame}  ****")
+        x0 = self.q[:, n_frame - 1]
+        if bounds is None:
+            sol = scipy.optimize.least_squares(
+                    fun=self._marker_diff,
+                    args=([self.xp_markers[:, :, n_frame]]),
+                    jac=self._marker_jac,
+                    x0=x0,
+                    method=method,
+                    xtol=1e-6,
+                    tr_options=dict(disp=False),
+                )
+        else:
+            sol = scipy.optimize.least_squares(
+                fun=self._marker_diff,
+                args=([self.xp_markers[:, :, n_frame]]),
+                bounds=bounds,
+                jac=self._marker_jac,
+                x0=x0,
+                method=method,
+                xtol=1e-6,
+                tr_options=dict(disp=False),
+            )
+        self.q[:, n_frame] = sol.x
+
+    def solve(self, method: str = "lm", full: bool = False):
         """
         Solve the inverse kinematics by using least square methode from scipy
         Parameters:
@@ -69,56 +95,27 @@ class StaticInverseKinematics:
             The method used by least_square
 
         """
-        bounds_max = np.squeeze(get_range_max_q(self.biorbd_model))
-        bounds_min = np.squeeze(get_range_min_q(self.biorbd_model))
 
-        # The first frame use the trf method in order to be sure to respect the bounds
-        x0 = np.random.random((self.biorbd_model.nbQ())) * 0.01
-        sol = scipy.optimize.least_squares(
-            fun=self._marker_diff,
-            args=(self.xp_markers[:, :, 0]),
-            bounds=(bounds_min, bounds_max),
-            jac=self._marker_jac,
-            x0=x0,
-            method="trf",
-            xtol=1e-6,
-            tr_options=dict(disp=False),
-        )
-        self.q[:, 0] = sol.x
+        if full:
+            if method == "trf":
+                for ii in range(0, self.nb_frames):
+                    self.optimize(ii, method, (self.bounds_min, self.bounds_max))
+            elif method == "lm":
+                for ii in range(0, self.nb_frames):
+                    self.optimize(ii, method)
+            else:
+                raise ValueError('This method is not implemented please use "trf" or "lm" as argument')
 
-        if method == "trf":
-            for ii in range(1, self.nb_frames):
-                print(f" ****   Frame {ii}  ****")
-                x0 = self.q[:, ii - 1]
-                sol = scipy.optimize.least_squares(
-                    fun=self._marker_diff,
-                    args=(self.xp_markers[:, :, ii]),
-                    jac=self._marker_jac,
-                    x0=x0,
-                    method=method,
-                    xtol=1e-6,
-                    tr_options=dict(disp=False),
-                )
-                self.q[:, ii] = sol.x
-
-        elif method == "lm":
-            for ii in range(1, self.nb_frames):
-                print(f" ****   Frame {ii}  ****")
-                x0 = self.q[:, ii - 1]
-                sol = scipy.optimize.least_squares(
-                    fun=self._marker_diff,
-                    args=(self.xp_markers[:, :, ii]),
-                    jac=self._marker_jac,
-                    x0=x0,
-                    method="lm",
-                    xtol=1e-6,
-                    tr_options=dict(disp=False),
-                )
-                self.q[:, ii] = sol.x
         else:
-            raise ValueError('This method is not implemented please use "trf" or "lm" as argument')
+            self.optimize(0, "trf")
 
-        print(f" Inverse Kinematics done for all frames")
+            if method == "trf" or method == "lm":
+                for ii in range(1, self.nb_frames):
+                    self.optimize(ii, method)
+            else:
+                raise ValueError('This method is not implemented please use "trf" or "lm" as argument')
+
+        print("Inverse Kinematics done for all frames")
 
     def animate(self):
         b = bioviz.Viz(loaded_model=self.biorbd_model, show_muscles=False)
