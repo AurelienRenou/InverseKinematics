@@ -1,11 +1,10 @@
-from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
 import biorbd
 import bioviz
-from scripts.utils import get_range_q
-from scripts.load_experimental_data import C3dData
+from utils import get_range_q
 import scipy
+from ezc3d import c3d
 
 
 class StaticInverseKinematics:
@@ -20,9 +19,9 @@ class StaticInverseKinematics:
         The c3d file path
     biorbd_model: biorbd.Model
         The biorbd model loaded
-    c3d_data: C3dData
-        The Data from c3d file
-    list_model_markers: list[str]
+    c3d: ezc3d.c3d
+        The c3d loaded
+    marker_names: list[str]
         The list of markers' name
     xp_markers: np.array
         The position of the markers from the c3d
@@ -63,19 +62,35 @@ class StaticInverseKinematics:
         self.c3d_path_file = c3d_path_file
 
         self.biorbd_model = biorbd.Model(self.biorbd_model_path)
-        self.c3d_data = C3dData(self.c3d_path_file, self.biorbd_model)
+        self.c3d = c3d(self.c3d_path_file)
 
-        self.list_model_markers = [
+        self.marker_names = [
             self.biorbd_model.markerNames()[i].to_string() for i in range(len(self.biorbd_model.markerNames()))
         ]
-        self.xp_markers = self.c3d_data.trajectories
+        self.xp_markers = self.get_marker_trajectories()
         self.nb_q = self.biorbd_model.nbQ()
-        self.nb_frames = self.c3d_data.nb_frames
+        self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
         self.nb_markers = self.biorbd_model.nbMarkers()
 
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
-        
+
+    def get_marker_trajectories(self) -> np.ndarray:
+        """
+        get markers trajectories
+        """
+
+        # LOAD C3D FILE
+        points = self.c3d["data"]["points"]
+        labels_markers = self.c3d["parameters"]["POINT"]["LABELS"]["value"]
+
+        # GET THE MARKERS POSITION (X, Y, Z) AT EACH POINT
+        markers = np.zeros((3, len(self.marker_names), len(points[0, 0, :])))
+
+        for i, name in enumerate(self.marker_names):
+            markers[:, i, :] = points[:3, labels_markers.index(name), :] * 1e-3
+        return markers
+
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Compute the difference between the marker position in the model and the position in the data
