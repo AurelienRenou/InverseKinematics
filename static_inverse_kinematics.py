@@ -147,28 +147,30 @@ class StaticInverseKinematics:
                         Usually the most efficient method for small unconstrained problems.
 
         """
+        initial_bounds = (-np.inf, np.inf) if method == "only_lm" else self.bounds
+        inital_method = "lm" if method == "only_lm" else "trf"
+
         bounds = self.bounds if method == "trf" else (-np.inf, np.inf)
-        first_method = "lm" if method == "only_lm" else "trf"
         method = "lm" if method == "only_lm" else method
 
-        if method == "lm" or method == "trf":
+        if method != "lm" and method != "trf" and method != "only_lm":
+            raise ValueError('This method is not implemented please use "trf", "lm" or "only_lm" as argument')
+
+        else:
             for ii in range(0, self.nb_frames):
                 print(f" ****   Frame {ii}  ****")
                 x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
                     args=([self.xp_markers[:, :, ii]]),
-                    bounds=bounds,
+                    bounds=initial_bounds if ii == 0 else bounds,
                     jac=self._marker_jac,
                     x0=x0,
-                    method=first_method if ii == 0 else method,
+                    method=inital_method if ii == 0 else method,
                     xtol=1e-6,
                     tr_options=dict(disp=False),
                 )
                 self.q[:, ii] = sol.x
-        else:
-            raise ValueError('This method is not implemented please use "trf", "lm" or "only_lm" as argument')
-
         print("Inverse Kinematics done for all frames")
 
     def animate(self):
