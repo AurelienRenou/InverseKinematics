@@ -74,7 +74,6 @@ class StaticInverseKinematics:
         self.nb_markers = self.biorbd_model.nbMarkers()
 
         self.q = np.zeros((self.nb_q, self.nb_frames))
-        self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
         self.bounds = get_range_q(self.biorbd_model)
         
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
@@ -158,7 +157,7 @@ class StaticInverseKinematics:
 
         else:
             for ii in range(0, self.nb_frames):
-                print(f" ****   Frame {ii} / {self.nb_frame} ****")
+                print(f" ****   Frame {ii} / {self.nb_frames-1} ****")
                 x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
