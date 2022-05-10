@@ -158,7 +158,7 @@ class StaticInverseKinematics:
 
         else:
             for ii in range(0, self.nb_frames):
-                print(f" ****   Frame {ii}  ****")
+                print(f" ****   Frame {ii} / {self.nb_frame} ****")
                 x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
