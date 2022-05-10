@@ -78,7 +78,8 @@ class StaticInverseKinematics:
         self.model_markers = np.zeros((3, self.nb_markers))  # We initialize this attributes
         self.q = np.zeros((self.biorbd_model.nbQ(), self.nb_frames))
         self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
-
+        self.bounds = get_range_q(self.biorbd_model)
+        
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Compute the difference between the marker position in the model and the position in the data
@@ -116,60 +117,49 @@ class StaticInverseKinematics:
 
         return jac
 
-    def optimize(self, n_frame: int, method: str, bounds: tuple() = None):
-        print(f" ****   Frame {n_frame}  ****")
-        x0 = self.q[:, n_frame - 1]
-        if bounds is None:
-            sol = scipy.optimize.least_squares(
-                    fun=self._marker_diff,
-                    args=([self.xp_markers[:, :, n_frame]]),
-                    jac=self._marker_jac,
-                    x0=x0,
-                    method=method,
-                    xtol=1e-6,
-                    tr_options=dict(disp=False),
-                )
-        else:
-            sol = scipy.optimize.least_squares(
-                fun=self._marker_diff,
-                args=([self.xp_markers[:, :, n_frame]]),
-                bounds=bounds,
-                jac=self._marker_jac,
-                x0=x0,
-                method=method,
-                xtol=1e-6,
-                tr_options=dict(disp=False),
-            )
-        self.q[:, n_frame] = sol.x
-
     def solve(self, method: str = "lm", full: bool = False):
         """
-        Solve the inverse kinematics by using least square methode from scipy
+        Solve the inverse kinematics by using least_square method from scipy
         Parameters:
         ----------
         method: str
-            The method used by least_square
+            The method used by least_square to optimize the difference.
+
+            If method = 'lm', the 'trf' method will be used for the first frame, in order to respect the bounds of the model.
+            Then, the 'lm' method will be used for the following frames.
+            If method = 'trf', the 'trf' method will be used for all the frames.
+            If method = 'only_lm', the 'lm' method will be used for all the frames.
+
+            In least_square:
+                -‘trf’ : Trust Region Reflective algorithm, particularly suitable for large sparse problems
+                        with bounds.
+                        Generally robust method.
+                -‘lm’ : Levenberg-Marquardt algorithm as implemented in MINPACK.
+                        Doesn’t handle bounds and sparse Jacobians.
+                        Usually the most efficient method for small unconstrained problems.
 
         """
+        bounds = self.bounds if method == "trf" else (-np.inf, np.inf)
+        first_method = "lm" if method == "only_lm" else "trf"
+        method = "lm" if method == "only_lm" else method
 
-        if full:
-            if method == "trf":
-                for ii in range(0, self.nb_frames):
-                    self.optimize(ii, method, (self.bounds_min, self.bounds_max))
-            elif method == "lm":
-                for ii in range(0, self.nb_frames):
-                    self.optimize(ii, method)
-            else:
-                raise ValueError('This method is not implemented please use "trf" or "lm" as argument')
-
+        if method == "lm" or method == "trf":
+            for ii in range(0, self.nb_frames):
+                print(f" ****   Frame {ii}  ****")
+                x0 = np.random.random(self.nbQ) * 0.1 if ii == 0 else self.q[:, ii - 1]
+                sol = scipy.optimize.least_squares(
+                    fun=self._marker_diff,
+                    args=([self.xp_markers[:, :, ii]]),
+                    bounds=bounds,
+                    jac=self._marker_jac,
+                    x0=x0,
+                    method=first_method if ii == 0 else method,
+                    xtol=1e-6,
+                    tr_options=dict(disp=False),
+                )
+                self.q[:, ii] = sol.x
         else:
-            self.optimize(0, "trf")
-
-            if method == "trf" or method == "lm":
-                for ii in range(1, self.nb_frames):
-                    self.optimize(ii, method)
-            else:
-                raise ValueError('This method is not implemented please use "trf" or "lm" as argument')
+            raise ValueError('This method is not implemented please use "trf", "lm" or "only_lm" as argument')
 
         print("Inverse Kinematics done for all frames")
 
