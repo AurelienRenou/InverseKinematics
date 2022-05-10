@@ -26,14 +26,12 @@ class StaticInverseKinematics:
         The list of markers' name
     xp_markers: np.array
         The position of the markers from the c3d
-    nbQ: int
+    nb_q: int
         The number of dof in the model
     nb_frames: int
         The number of frame in the c3d
     nb_markers: int
         The number of markers in the model
-    model_markers: np.array
-
     q: np.array
         The values of the q to makes markers' position from c3d and model match
     bounds_min: np.array
@@ -71,24 +69,28 @@ class StaticInverseKinematics:
             self.biorbd_model.markerNames()[i].to_string() for i in range(len(self.biorbd_model.markerNames()))
         ]
         self.xp_markers = self.c3d_data.trajectories
-        self.nbQ = self.biorbd_model.nbQ()
+        self.nb_q = self.biorbd_model.nbQ()
         self.nb_frames = self.c3d_data.nb_frames
         self.nb_markers = self.biorbd_model.nbMarkers()
 
-        self.model_markers = np.zeros((3, self.nb_markers))  # We initialize this attributes
-        self.q = np.zeros((self.biorbd_model.nbQ(), self.nb_frames))
+        self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
         self.bounds = get_range_q(self.biorbd_model)
         
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Compute the difference between the marker position in the model and the position in the data
-        Arguments:
-        ---------
+
+        Parameters:
+        -----------
         q: np.ndarray
             The q values
         xp_markers: np.ndarray
             The position of the markers from the c3d during a certain frame
+
+        Return:
+        ------
+            The difference vector between markers' position in the model and in the c3d
         """
         mat_pos_markers = self.biorbd_model.technicalMarkers(q)
         vect_pos_markers = np.zeros(3 * self.nb_markers)
@@ -102,16 +104,21 @@ class StaticInverseKinematics:
     def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Generate the Jacobian matrix for each frame.
-        Arguments:
-        ---------
+
+        Parameters:
+        -----------
         q: np.ndarray
             The q values
         xp_markers: np.ndarray
             The position of the markers from the c3d during a certain frame
+
+        Return:
+        ------
+            The Jacobian matrix
         """
         mat_jac = self.biorbd_model.technicalMarkersJacobian(q)
 
-        jac = np.zeros((3 * self.nb_markers, self.nbQ))
+        jac = np.zeros((3 * self.nb_markers, self.nb_q))
         for m in range(self.nb_markers):
             jac[m * 3: (m + 1) * 3, :] = mat_jac[m].to_array()
 
@@ -120,6 +127,7 @@ class StaticInverseKinematics:
     def solve(self, method: str = "lm", full: bool = False):
         """
         Solve the inverse kinematics by using least_square method from scipy
+
         Parameters:
         ----------
         method: str
@@ -146,7 +154,7 @@ class StaticInverseKinematics:
         if method == "lm" or method == "trf":
             for ii in range(0, self.nb_frames):
                 print(f" ****   Frame {ii}  ****")
-                x0 = np.random.random(self.nbQ) * 0.1 if ii == 0 else self.q[:, ii - 1]
+                x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
                     args=([self.xp_markers[:, :, ii]]),
