@@ -71,6 +71,8 @@ class StaticInverseKinematics:
         self.nb_q = self.biorbd_model.nbQ()
         self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
         self.nb_markers = self.biorbd_model.nbMarkers()
+        self.idx_to_remove = []
+        self._get_idx_to_remove()
 
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
@@ -91,7 +93,17 @@ class StaticInverseKinematics:
             markers[:, i, :] = points[:3, labels_markers.index(name), :] / get_unit_division_factor(self.c3d)
         return markers
 
-    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
+    def _get_idx_to_remove(self):
+        for j in range(self.nb_frames):
+            self.idx_to_remove.append([])
+            for i in range(self.nb_markers):
+                if np.isnan(self.xp_markers[0][i][j]):
+                    self.idx_to_remove[j].append(i)
+            if len(self.idx_to_remove[j]) == 0:
+                self.idx_to_remove[j].append(None)
+        self.idx_to_remove = np.array(self.idx_to_remove, dtype=object)
+
+    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray, n_frame):
         """
         Compute the difference between the marker position in the model and the position in the data
 
@@ -113,9 +125,18 @@ class StaticInverseKinematics:
             vect_pos_markers[m * 3: (m + 1) * 3] = mat_pos_markers[m].to_array()
 
         # return the vector of the squared differences between the model and the data
-        return vect_pos_markers - np.reshape(xp_markers.T, (self.nb_markers * 3,))
+        idx_to_remove_diff = []
+        for i in range(len(self.idx_to_remove[n_frame])):
+            idx_to_remove_diff.append(self.idx_to_remove[n_frame][i] * 3)
+            for j in range(2):
+                idx_to_remove_diff.append(idx_to_remove_diff[-1]+1)
+        diff = np.array(
+            [value for i, value in enumerate(vect_pos_markers - np.reshape(xp_markers.T, (self.nb_markers * 3,)))
+             if not i in idx_to_remove_diff])
 
-    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray):
+        return diff
+
+    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray, n_frame):
         """
         Generate the Jacobian matrix for each frame.
 
@@ -176,7 +197,7 @@ class StaticInverseKinematics:
                 x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
-                    args=([self.xp_markers[:, :, ii]]),
+                    args=(self.xp_markers[:, :, ii], ii),
                     bounds=initial_bounds if ii == 0 else bounds,
                     jac=self._marker_jac,
                     x0=x0,
