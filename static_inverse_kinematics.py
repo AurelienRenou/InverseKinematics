@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import minimize
 import biorbd
 import bioviz
-from utils import get_range_q
+from utils import get_range_q, get_unit_division_factor
 import scipy
 from ezc3d import c3d
 
@@ -88,7 +88,7 @@ class StaticInverseKinematics:
         markers = np.zeros((3, len(self.marker_names), len(points[0, 0, :])))
 
         for i, name in enumerate(self.marker_names):
-            markers[:, i, :] = points[:3, labels_markers.index(name), :] * 1e-3
+            markers[:, i, :] = points[:3, labels_markers.index(name), :] / get_unit_division_factor(self.c3d)
         return markers
 
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
