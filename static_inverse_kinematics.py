@@ -54,9 +54,9 @@ class StaticInverseKinematics:
     """
 
     def __init__(
-            self,
-            biorbd_model_path: str,
-            c3d_path_file: str,
+        self,
+        biorbd_model_path: str,
+        c3d_path_file: str,
     ):
         self.biorbd_model_path = biorbd_model_path
         self.c3d_path_file = c3d_path_file
@@ -110,7 +110,7 @@ class StaticInverseKinematics:
         vect_pos_markers = np.zeros(3 * self.nb_markers)
 
         for m in range(self.nb_markers):
-            vect_pos_markers[m * 3: (m + 1) * 3] = mat_pos_markers[m].to_array()
+            vect_pos_markers[m * 3 : (m + 1) * 3] = mat_pos_markers[m].to_array()
 
         # return the vector of the squared differences between the model and the data
         return vect_pos_markers - np.reshape(xp_markers.T, (self.nb_markers * 3,))
@@ -134,7 +134,7 @@ class StaticInverseKinematics:
 
         jac = np.zeros((3 * self.nb_markers, self.nb_q))
         for m in range(self.nb_markers):
-            jac[m * 3: (m + 1) * 3, :] = mat_jac[m].to_array()
+            jac[m * 3 : (m + 1) * 3, :] = mat_jac[m].to_array()
 
         return jac
 

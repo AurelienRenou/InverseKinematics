@@ -3,6 +3,7 @@ import ezc3d
 import numpy as np
 from ezc3d import c3d
 
+
 def get_range_q(biorbd_model: biorbd.Model):
     """
 
