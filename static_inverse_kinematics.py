@@ -58,9 +58,9 @@ class StaticInverseKinematics:
     """
 
     def __init__(
-            self,
-            biorbd_model_path: str,
-            c3d_path_file: str,
+        self,
+        biorbd_model_path: str,
+        c3d_path_file: str,
     ):
         self.biorbd_model_path = biorbd_model_path
         self.c3d_path_file = c3d_path_file
