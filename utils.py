@@ -6,7 +6,7 @@ from ezc3d import c3d
 
 def get_range_q(biorbd_model: biorbd.Model) -> tuple[np.ndarray, np.ndarray]:
     """
-    Give the ranges of the model
+    Give the ranges of generalized coordinates q
 
     Parameters
     ----------
@@ -20,10 +20,9 @@ def get_range_q(biorbd_model: biorbd.Model) -> tuple[np.ndarray, np.ndarray]:
     """
     q_range_max = []
     q_range_min = []
-    for i in range(biorbd_model.nbSegment()):
-        segment = biorbd_model.segment(i)
-        q_range_max += [q_range.max() for q_range in segment.QRanges()]
-        q_range_min += [q_range.min() for q_range in segment.QRanges()]
+    for seg in biorbd_model.segments():
+        q_range_max += [q_range.max() for q_range in seg.QRanges()]
+        q_range_min += [q_range.min() for q_range in seg.QRanges()]
     return np.array(q_range_min), np.array(q_range_max)
 
 
