@@ -33,10 +33,8 @@ class StaticInverseKinematics:
         The number of markers in the model
     q: np.array
         The values of the q to makes markers' position from c3d and model match
-    bounds_min: np.array
-        The min range of the model Q
-    bounds_max: np.array
-        The max range of the model Q
+    bounds: tuple(np.ndarray, np.ndarray)
+        The min and max ranges of the model Q
 
     Methods
     -------
