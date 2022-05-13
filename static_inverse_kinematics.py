@@ -9,7 +9,7 @@ from ezc3d import c3d
 
 class StaticInverseKinematics:
     """
-    The class for generate inverse kinemacs from c3d files
+    The class for generate inverse kinematics from c3d files
 
     Attributes:
     ----------
@@ -37,9 +37,15 @@ class StaticInverseKinematics:
         The min range of the model Q
     bounds_max: np.array
         The max range of the model Q
+    idx_to_remove: list(int)
+        The list of markers index  which have a nan value in xp_markers
 
     Methods
     -------
+    _get_marker_trajectories(self)
+        get markers trajectories
+    _get_idx_to_remove(self)
+        Find, for each frame, the index of the markers which has a nan value
     _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray)
         Compute the difference between the marker position in the model and the position in the data.
     _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray)
@@ -72,12 +78,18 @@ class StaticInverseKinematics:
         self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
         self.nb_markers = self.biorbd_model.nbMarkers()
 
+        self._get_idx_to_remove()
+
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
 
-    def get_marker_trajectories(self) -> np.ndarray:
+    def _get_marker_trajectories(self) -> np.ndarray:
         """
         get markers trajectories
+        Returns:
+        ------
+        markers: np.ndarray
+            The positions of the c3d markers for each frames
         """
 
         # LOAD C3D FILE
@@ -89,9 +101,18 @@ class StaticInverseKinematics:
 
         for i, name in enumerate(self.marker_names):
             markers[:, i, :] = points[:3, labels_markers.index(name), :] / get_unit_division_factor(self.c3d)
+            # The unit of the model is the meter
         return markers
 
-    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
+    def _get_idx_to_remove(self):
+        """
+        Find, for each frame, the index of the markers which has a nan value
+        """
+        self.idx_to_remove = [[]] * self.nb_frames
+        for j in range(self.nb_frames):
+            self.idx_to_remove[j] = list(np.unique(np.isnan(self.xp_markers[:, :, j]).nonzero()[1]))
+
+    def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray, idx_to_remove):
         """
         Compute the difference between the marker position in the model and the position in the data
 
@@ -107,15 +128,18 @@ class StaticInverseKinematics:
             The difference vector between markers' position in the model and in the c3d
         """
         mat_pos_markers = self.biorbd_model.technicalMarkers(q)
-        vect_pos_markers = np.zeros(3 * self.nb_markers)
+        mat_pos_markers = np.delete(mat_pos_markers, idx_to_remove, 0)
+        nb_markers = len(mat_pos_markers)
+        vect_pos_markers = np.zeros(3 * nb_markers)
 
-        for m in range(self.nb_markers):
-            vect_pos_markers[m * 3 : (m + 1) * 3] = mat_pos_markers[m].to_array()
+        for m, value in enumerate(mat_pos_markers):
+            vect_pos_markers[m * 3 : (m + 1) * 3] = value.to_array()
 
-        # return the vector of the squared differences between the model and the data
-        return vect_pos_markers - np.reshape(xp_markers.T, (self.nb_markers * 3,))
+        xp_markers = np.delete(xp_markers, idx_to_remove, 1)
 
-    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray):
+        return vect_pos_markers - np.reshape(xp_markers.T, (nb_markers * 3,))
+
+    def _marker_jac(self, q: np.ndarray, xp_markers: np.ndarray, idx_to_remove):
         """
         Generate the Jacobian matrix for each frame.
 
@@ -131,10 +155,12 @@ class StaticInverseKinematics:
             The Jacobian matrix
         """
         mat_jac = self.biorbd_model.technicalMarkersJacobian(q)
+        mat_jac = np.delete(mat_jac, idx_to_remove, 0)
+        nb_markers = len(mat_jac)
+        jac = np.zeros((3 * nb_markers, self.nb_q))
 
-        jac = np.zeros((3 * self.nb_markers, self.nb_q))
-        for m in range(self.nb_markers):
-            jac[m * 3 : (m + 1) * 3, :] = mat_jac[m].to_array()
+        for m, value in enumerate(mat_jac):
+            jac[m * 3 : (m + 1) * 3, :] = value.to_array()
 
         return jac
 
@@ -176,7 +202,7 @@ class StaticInverseKinematics:
                 x0 = np.random.random(self.nb_q) * 0.1 if ii == 0 else self.q[:, ii - 1]
                 sol = scipy.optimize.least_squares(
                     fun=self._marker_diff,
-                    args=([self.xp_markers[:, :, ii]]),
+                    args=(self.xp_markers[:, :, ii], self.idx_to_remove[ii]),
                     bounds=initial_bounds if ii == 0 else bounds,
                     jac=self._marker_jac,
                     x0=x0,
