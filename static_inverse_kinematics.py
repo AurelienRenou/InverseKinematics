@@ -101,6 +101,7 @@ class StaticInverseKinematics:
 
         for i, name in enumerate(self.marker_names):
             markers[:, i, :] = points[:3, labels_markers.index(name), :] / get_unit_division_factor(self.c3d)
+            # The unit of the model is the meter
         return markers
 
     def _get_idx_to_remove(self):
@@ -132,7 +133,7 @@ class StaticInverseKinematics:
         vect_pos_markers = np.zeros(3 * nb_markers)
 
         for m, value in enumerate(mat_pos_markers):
-            vect_pos_markers[m * 3: (m + 1) * 3] = value.to_array()
+            vect_pos_markers[m * 3 : (m + 1) * 3] = value.to_array()
 
         xp_markers = np.delete(xp_markers, idx_to_remove, 1)
 
@@ -159,7 +160,7 @@ class StaticInverseKinematics:
         jac = np.zeros((3 * nb_markers, self.nb_q))
 
         for m, value in enumerate(mat_jac):
-            jac[m * 3: (m + 1) * 3, :] = value.to_array()
+            jac[m * 3 : (m + 1) * 3, :] = value.to_array()
 
         return jac
 
