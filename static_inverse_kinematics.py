@@ -74,9 +74,8 @@ class StaticInverseKinematics:
         self.nb_markers = self.biorbd_model.nbMarkers()
 
         self.q = np.zeros((self.nb_q, self.nb_frames))
-        self.bounds_min, self.bounds_max = np.squeeze(get_range_q(self.biorbd_model))
         self.bounds = get_range_q(self.biorbd_model)
-        
+
     def _marker_diff(self, q: np.ndarray, xp_markers: np.ndarray):
         """
         Compute the difference between the marker position in the model and the position in the data
