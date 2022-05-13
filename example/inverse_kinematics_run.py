@@ -40,3 +40,12 @@ print("The time used with 'trf' to execute with least square is given below")
 print(end4 - start4)
 
 ik.animate()
+
+ik = sik.StaticInverseKinematics(model_path, c3d_path_nan)
+start_nan = time.time()
+ik.solve()
+end_nan = time.time()
+print("The time used to execute with least square is given below, if the c3d has nan values")
+print(end_nan - start_nan)
+
+ik.animate()
