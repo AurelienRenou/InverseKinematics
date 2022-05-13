@@ -71,7 +71,7 @@ def get_segment_and_dof_id_from_global_dof(biorbd_model: biorbd.Model, global_do
 
 def get_unit_division_factor(c3d_file: ezc3d.c3d) -> int:
     """
-    Allow the users to get the length units of a c3d file
+    Allow the users to adjust the lenght units of the c3d, the biorbd model is in meter.
 
     Parameters
     ----------

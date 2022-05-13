@@ -9,7 +9,7 @@ from ezc3d import c3d
 
 class StaticInverseKinematics:
     """
-    The class for generate inverse kinemacs from c3d files
+    The class for generate inverse kinematics from c3d files
 
     Attributes:
     ----------
@@ -37,10 +37,12 @@ class StaticInverseKinematics:
         The min range of the model Q
     bounds_max: np.array
         The max range of the model Q
+    idx_to_remove: list(int)
+        The list of markers index  which have a nan value in xp_markers
 
     Methods
     -------
-    get_marker_trajectories(self)
+    _get_marker_trajectories(self)
         get markers trajectories
     _get_idx_to_remove(self)
         Find, for each frame, the index of the markers which has a nan value
@@ -81,9 +83,13 @@ class StaticInverseKinematics:
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
 
-    def get_marker_trajectories(self) -> np.ndarray:
+    def _get_marker_trajectories(self) -> np.ndarray:
         """
         get markers trajectories
+        Returns:
+        ------
+        markers: np.ndarray
+            The positions of the c3d markers for each frames
         """
 
         # LOAD C3D FILE
