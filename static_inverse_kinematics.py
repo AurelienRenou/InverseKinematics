@@ -71,7 +71,7 @@ class StaticInverseKinematics:
         self.marker_names = [
             self.biorbd_model.markerNames()[i].to_string() for i in range(len(self.biorbd_model.markerNames()))
         ]
-        self.xp_markers = self.get_marker_trajectories()
+        self.xp_markers = self._get_marker_trajectories()
         self.nb_q = self.biorbd_model.nbQ()
         self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
         self.nb_markers = self.biorbd_model.nbMarkers()
