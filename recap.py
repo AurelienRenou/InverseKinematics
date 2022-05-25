@@ -2,7 +2,6 @@
 This script generate a recap of the Inverse Kinematics Class
 """
 import static_inverse_kinematics as sik
-import time
 import pandas as pd
 
 
@@ -14,7 +13,6 @@ df = pd.DataFrame(
         "method",
         "number_of_frame",
         "frequency",
-        "resolution_time",
         "residuals",
         "nb_iteration_diff",
         "nb_iteration_jac",
@@ -25,14 +23,12 @@ method_list = ["trf", "lm", "only_lm"]
 
 for method in method_list:
     ik = sik.StaticInverseKinematics(model_path, c3d_path)
-    start1 = time.time()
-    ik.solve(method=method, print_nb_frame=False, iteration_per_frames=False, print_time=False)
+    ik.solve(method=method)
     ik.get_sol()
     cur_dict = dict(
         method=method,
         number_of_frame=ik.c3d["parameters"]["POINT"]["FRAMES"]["value"][0],
         frequency=ik.c3d["parameters"]["POINT"]["RATE"]["value"][0],
-        resolution_time=ik.output["time"],
         residuals=ik.output["residuals"],
         nb_iteration_diff=ik.output["nb_iteration_diff"],
         nb_iteration_jac=ik.output["nb_iteration_jac"],

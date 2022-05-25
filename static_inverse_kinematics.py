@@ -5,7 +5,6 @@ import bioviz
 from utils import get_range_q, get_unit_division_factor
 import scipy
 from ezc3d import c3d
-import time
 
 
 class StaticInverseKinematics:
@@ -82,16 +81,10 @@ class StaticInverseKinematics:
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
 
-        self.sol = []
-        self.start = None
-        self.end = None
-        self.duration = None
-        # self.residuals_xyz = [[0]*self.nb_markers*3]*self.nb_frames
-        self.residuals_xyz = np.array([[0.0] * self.nb_markers * 3] * self.nb_frames, ndmin=2)
-        self.residuals = np.array([[0.0] * self.nb_markers] * self.nb_frames, ndmin=2)
-        self.nb_iteration_diff = []
-        self.nb_iteration_jac = []
-        self.output = None
+        self.list_sol = []
+
+        self.output = dict()
+        self.nb_dim = self.xp_markers.shape[0]
 
     def _get_marker_trajectories(self) -> np.ndarray:
         """
@@ -197,7 +190,6 @@ class StaticInverseKinematics:
                         Usually the most efficient method for small unconstrained problems.
 
         """
-        self.start = time.time()
         initial_bounds = (-np.inf, np.inf) if method == "only_lm" else self.bounds
         inital_method = "lm" if method == "only_lm" else "trf"
 
@@ -221,10 +213,8 @@ class StaticInverseKinematics:
                     tr_options=dict(disp=False),
                 )
                 self.q[:, ii] = sol.x
-                self.sol.append(sol)
+                self.list_sol.append(sol)
         print("Inverse Kinematics done for all frames")
-        self.end = time.time()
-        self.duration = self.end - self.start
 
     def animate(self):
         """
@@ -236,19 +226,20 @@ class StaticInverseKinematics:
         b.exec()
 
     def get_sol(self):
-        for i, sol in enumerate(self.sol):
-            for j, value in enumerate(sol.fun):
-                self.residuals_xyz[i][j] = value
-            self.nb_iteration_diff.append(sol.nfev)
-            self.nb_iteration_jac.append(sol.njev)
+        residuals_xyz = np.array([[0.0] * self.nb_markers * self.nb_dim] * self.nb_frames, ndmin=2)
+        residuals = np.array([[0.0] * self.nb_markers] * self.nb_frames, ndmin=2)
+        nb_iteration_diff = []
+        nb_iteration_jac = []
 
-        for j, value in enumerate(self.residuals_xyz):
-            for h in range(0, 3 * self.nb_markers, 3):
-                self.residuals[j][int(h / 3)] = np.linalg.norm(value[h : h + 3])
+        for i in range(self.nb_frames):
+            nb_iteration_diff.append(self.list_sol[i].nfev)
+            nb_iteration_jac.append(self.list_sol[i].njev)
+            residuals_xyz[i] = self.list_sol[i].fun
+            for h in range(0, self.nb_dim * self.nb_markers, self.nb_dim):
+                residuals[i][int(h / self.nb_dim)] = np.linalg.norm(self.list_sol[i].fun[h: h + self.nb_dim])
 
         self.output = dict(
-            time=self.duration,
-            residuals=self.residuals,
-            nb_iteration_diff=self.nb_iteration_diff,
-            nb_iteration_jac=self.nb_iteration_jac,
+            residuals=residuals,
+            nb_iteration_diff=nb_iteration_diff,
+            nb_iteration_jac=nb_iteration_jac,
         )
