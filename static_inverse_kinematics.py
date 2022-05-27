@@ -5,6 +5,7 @@ import bioviz
 from utils import get_range_q, get_unit_division_factor
 import scipy
 from ezc3d import c3d
+from typing import Union
 
 
 class StaticInverseKinematics:
@@ -60,24 +61,40 @@ class StaticInverseKinematics:
     def __init__(
         self,
         biorbd_model_path: str,
-        c3d_path_file: str,
+        marker_data: Union[str, c3d, np.array],
     ):
         self.biorbd_model_path = biorbd_model_path
-        self.c3d_path_file = c3d_path_file
-
         self.biorbd_model = biorbd.Model(self.biorbd_model_path)
-        self.c3d = c3d(self.c3d_path_file)
-
         self.marker_names = [
             self.biorbd_model.markerNames()[i].to_string() for i in range(len(self.biorbd_model.markerNames()))
         ]
-        self.xp_markers = self.get_marker_trajectories()
-        self.nb_q = self.biorbd_model.nbQ()
-        self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
         self.nb_markers = self.biorbd_model.nbMarkers()
 
-        self._get_idx_to_remove()
+        if isinstance(marker_data, str):
+            self.c3d_path_file = marker_data
+            self.c3d = c3d(self.c3d_path_file)
+            self.xp_markers = self._get_marker_trajectories()
+            self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
 
+        elif isinstance(marker_data, c3d):
+            self.c3d_path_file = None
+            self.c3d = marker_data
+            self.xp_markers = self._get_marker_trajectories()
+            self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
+
+        elif isinstance(marker_data, np.ndarray):
+            self.c3d_path_file = None
+            self.c3d = None
+            if marker_data.ndim == 3 and marker_data.shape[0] <= 3 and marker_data.shape[1] == self.nb_markers:
+                self.xp_markers = marker_data
+                self.nb_frames = marker_data.shape[2]
+            else:
+                raise ValueError(f"The standard dimension of the NumPy array should be (nb_dim, nb_marker, nb_frame)")
+        else:
+            raise ValueError("The standard inputs are str, an ezc3d.c3d, or a numpy.ndarray")
+
+        self.nb_q = self.biorbd_model.nbQ()
+        self._get_idx_to_remove()
         self.q = np.zeros((self.nb_q, self.nb_frames))
         self.bounds = get_range_q(self.biorbd_model)
 
