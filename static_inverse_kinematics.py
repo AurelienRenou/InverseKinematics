@@ -69,27 +69,30 @@ class StaticInverseKinematics:
         ]
         self.nb_markers = self.biorbd_model.nbMarkers()
 
-        if type(marker_data) is str:
+        if isinstance(marker_data, str):
             self.c3d_path_file = marker_data
             self.c3d = c3d(self.c3d_path_file)
             self.xp_markers = self._get_marker_trajectories()
             self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
 
-        elif type(marker_data) is c3d:
+        elif isinstance(marker_data, c3d):
+            self.c3d_path_file = None
             self.c3d = marker_data
             self.xp_markers = self._get_marker_trajectories()
             self.nb_frames = self.c3d["parameters"]["POINT"]["FRAMES"]["value"][0]
 
-        elif type(marker_data) is np.ndarray:
+        elif isinstance(marker_data, np.ndarray):
+            self.c3d_path_file = None
+            self.c3d = None
             if marker_data.ndim == 3 and marker_data.shape[0] <= 3 and marker_data.shape[1] == self.nb_markers:
                 self.xp_markers = marker_data
                 self.nb_frames = marker_data.shape[2]
             else:
-                raise Exception(
-                    "The markers data hasn't dimension expected. dim should be (nb_dim, nb_marker, nb_frame).")
+                raise ValueError(
+                    f"The standard dimension of the NumPy array should be (nb_dim, nb_marker, nb_frame)")
         else:
-            raise Exception(
-                "The markers data hasn't type expected. It should be a str, a ezc3d.c3d or a numpy.ndarray.")
+            raise ValueError(
+                "The standard inputs are str, an ezc3d.c3d, or a numpy.ndarray")
 
         self.nb_q = self.biorbd_model.nbQ()
         self._get_idx_to_remove()
