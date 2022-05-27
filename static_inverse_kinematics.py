@@ -37,6 +37,35 @@ class StaticInverseKinematics:
         The min and max ranges of the model Q
     idx_to_remove: list(int)
         The list of markers index  which have a nan value in xp_markers
+    list_sol: list(scipy.OptimizeResult)
+        The list of results of least_square function
+    output: dict()
+        The output of the solution:
+
+        residuals_xyz: np.ndarray
+            The array of the final return of _marker_diff function.
+            The final difference between markers position in the model and in the c3d.
+        residuals: np.ndarray
+            The array of the norm of residuals_xyz position for each markers in each frames.
+        nfev: np.ndarray
+            The array of the number of iteration of the _marker_diff function for each frames.
+        njev: np.ndarray
+            The array of the number of iteration of the _marker_jac function for each frames.
+        max_marker: list(str)
+            The list of markers that have the highest residual in standard.
+            So the markers that have the biggest difference between the model and the c3d for each frames.
+        message: list(str)
+            The list of the verbal description of the termination reason of the least_square function for each frames.
+        status: list(int)
+            The reason for algorithm termination for each frames
+            -1 : improper input parameters status returned from MINPACK.
+            0 : the maximum number of function evaluations is exceeded.
+            1 : gtol termination condition is satisfied.
+            2 : ftol termination condition is satisfied.
+            3 : xtol termination condition is satisfied.
+            4 : Both ftol and xtol termination conditions are satisfied.
+        success: list(bool)
+            The list of success for each frames. True if one of the convergence criteria is satisfied (status > 0).
 
     Methods
     -------
@@ -54,6 +83,8 @@ class StaticInverseKinematics:
         Solve the inverse kinematics by using least square methode from scipy.
     animate(self)
         Animate the result of solve with bioviz.
+    sol(self)
+        Create a dict which contains the output of the class.
 
     """
 
@@ -225,21 +256,42 @@ class StaticInverseKinematics:
         b.load_movement(self.q)
         b.exec()
 
-    def get_sol(self):
-        residuals_xyz = np.array([[0.0] * self.nb_markers * self.nb_dim] * self.nb_frames, ndmin=2)
-        residuals = np.array([[0.0] * self.nb_markers] * self.nb_frames, ndmin=2)
-        nb_iteration_diff = []
-        nb_iteration_jac = []
+    def sol(self):
+        """
+        Create a dict which contains the output of the class.
+
+        Return
+        ------
+        self.output: dict()
+            The output of least_square function, like number of iteration per frames and also the markers which is the
+            farthest from the c3d for each frames or the norm of the residuals from least_square.
+        """
+        residuals_xyz = np.zeros((self.nb_markers * self.nb_dim, self.nb_frames))
+        residuals = np.zeros((self.nb_markers, self.nb_frames))
+        nfev = np.zeros(self.nb_frames)
+        njev = np.zeros(self.nb_frames)
+
+        max_marker = [self.marker_names[i] for i in np.argmax(residuals, axis=0)]
+
+        message = [sol.message for i, sol in enumerate(self.list_sol)]
+        status = [sol.status for i, sol in enumerate(self.list_sol)]
+        success = [sol.success for i, sol in enumerate(self.list_sol)]
 
         for i in range(self.nb_frames):
-            nb_iteration_diff.append(self.list_sol[i].nfev)
-            nb_iteration_jac.append(self.list_sol[i].njev)
-            residuals_xyz[i] = self.list_sol[i].fun
-            for h in range(0, self.nb_dim * self.nb_markers, self.nb_dim):
-                residuals[i][int(h / self.nb_dim)] = np.linalg.norm(self.list_sol[i].fun[h: h + self.nb_dim])
+            nfev[i] = self.list_sol[i].nfev
+            njev[i] = self.list_sol[i].njev
+            residuals_xyz[:, i] = self.list_sol[i].fun
+            residuals[:, i] = np.linalg.norm(np.reshape(residuals_xyz[:, i], [self.nb_markers, self.nb_dim]), axis=1)
 
         self.output = dict(
             residuals=residuals,
-            nb_iteration_diff=nb_iteration_diff,
-            nb_iteration_jac=nb_iteration_jac,
+            residuals_xyz=residuals_xyz,
+            nfev=nfev,
+            njev=njev,
+            max_marker=max_marker,
+            message=message,
+            status=status,
+            success=success
         )
+
+        return self.output
