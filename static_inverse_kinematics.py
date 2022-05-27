@@ -57,6 +57,7 @@ class StaticInverseKinematics:
         Animate the result of solve with bioviz.
 
     """
+
     def __init__(
         self,
         biorbd_model_path: str,
@@ -88,11 +89,9 @@ class StaticInverseKinematics:
                 self.xp_markers = marker_data
                 self.nb_frames = marker_data.shape[2]
             else:
-                raise ValueError(
-                    f"The standard dimension of the NumPy array should be (nb_dim, nb_marker, nb_frame)")
+                raise ValueError(f"The standard dimension of the NumPy array should be (nb_dim, nb_marker, nb_frame)")
         else:
-            raise ValueError(
-                "The standard inputs are str, an ezc3d.c3d, or a numpy.ndarray")
+            raise ValueError("The standard inputs are str, an ezc3d.c3d, or a numpy.ndarray")
 
         self.nb_q = self.biorbd_model.nbQ()
         self._get_idx_to_remove()
