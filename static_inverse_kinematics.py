@@ -291,7 +291,7 @@ class StaticInverseKinematics:
             max_marker=max_marker,
             message=message,
             status=status,
-            success=success
+            success=success,
         )
 
         return self.output
