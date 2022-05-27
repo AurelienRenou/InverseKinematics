@@ -1,7 +1,7 @@
 """
 This script generate a recap of the Inverse Kinematics Class
 """
-import static_inverse_kinematics as sik
+import inverse_kinematics as ik
 import pandas as pd
 
 
@@ -22,8 +22,9 @@ df = pd.DataFrame(
 method_list = ["trf", "lm", "only_lm"]
 
 for method in method_list:
-    ik = sik.StaticInverseKinematics(model_path, c3d_path)
+    ik = ik.InverseKinematics(model_path, c3d_path)
     ik.solve(method=method)
+    # ik.
     ik.get_sol()
     cur_dict = dict(
         method=method,

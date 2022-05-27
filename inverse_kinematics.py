@@ -7,7 +7,7 @@ import scipy
 from ezc3d import c3d
 
 
-class StaticInverseKinematics:
+class InverseKinematics:
     """
     The class for generate inverse kinematics from c3d files
 
@@ -32,7 +32,7 @@ class StaticInverseKinematics:
     nb_markers: int
         The number of markers in the model
     q: np.array
-        The values of the q to makes markers' position from c3d and model match
+        generalized coordinates
     bounds: tuple(np.ndarray, np.ndarray)
         The min and max ranges of the model Q
     idx_to_remove: list(int)
@@ -46,18 +46,18 @@ class StaticInverseKinematics:
             The array of the final return of _marker_diff function.
             The final difference between markers position in the model and in the c3d.
         residuals: np.ndarray
-            The array of the norm of residuals_xyz position for each markers in each frames.
+            The array of the norm of residuals_xyz position for each markers in each frame.
         nfev: np.ndarray
-            The array of the number of iteration of the _marker_diff function for each frames.
+            The array of the number of iteration of the _marker_diff function for each frame.
         njev: np.ndarray
-            The array of the number of iteration of the _marker_jac function for each frames.
+            The array of the number of iteration of the _marker_jac function for each frame.
         max_marker: list(str)
-            The list of markers that have the highest residual in standard.
-            So the markers that have the biggest difference between the model and the c3d for each frames.
+            The list of markers that have the highest residual.
+            So the markers that have the biggest difference between the model and the c3d for each frame.
         message: list(str)
-            The list of the verbal description of the termination reason of the least_square function for each frames.
+            The list of the verbal description of the termination reason of the least_square function for each frame.
         status: list(int)
-            The reason for algorithm termination for each frames
+            The reason for algorithm termination for each frame
             -1 : improper input parameters status returned from MINPACK.
             0 : the maximum number of function evaluations is exceeded.
             1 : gtol termination condition is satisfied.
@@ -65,7 +65,7 @@ class StaticInverseKinematics:
             3 : xtol termination condition is satisfied.
             4 : Both ftol and xtol termination conditions are satisfied.
         success: list(bool)
-            The list of success for each frames. True if one of the convergence criteria is satisfied (status > 0).
+            The list of success for each frame. True if one of the convergence criteria is satisfied (status > 0).
 
     Methods
     -------
@@ -84,7 +84,7 @@ class StaticInverseKinematics:
     animate(self)
         Animate the result of solve with bioviz.
     sol(self)
-        Create a dict which contains the output of the class.
+        Create and return a dict which contains the output each optimization.
 
     """
 
@@ -123,7 +123,7 @@ class StaticInverseKinematics:
         Returns:
         ------
         markers: np.ndarray
-            The positions of the c3d markers for each frames
+            The positions of the c3d markers for each frame
         """
 
         # LOAD C3D FILE
@@ -220,6 +220,10 @@ class StaticInverseKinematics:
                         Doesn’t handle bounds and sparse Jacobians.
                         Usually the most efficient method for small unconstrained problems.
 
+        Returns
+        ----------
+        q : np.array
+            generalized coordinates
         """
         initial_bounds = (-np.inf, np.inf) if method == "only_lm" else self.bounds
         inital_method = "lm" if method == "only_lm" else "trf"
@@ -246,6 +250,7 @@ class StaticInverseKinematics:
                 self.q[:, ii] = sol.x
                 self.list_sol.append(sol)
         print("Inverse Kinematics done for all frames")
+        return self.q
 
     def animate(self):
         """
@@ -258,24 +263,18 @@ class StaticInverseKinematics:
 
     def sol(self):
         """
-        Create a dict which contains the output of the class.
+        Create and return a dict which contains the output each optimization.
 
         Return
         ------
         self.output: dict()
-            The output of least_square function, like number of iteration per frames and also the markers which is the
-            farthest from the c3d for each frames or the norm of the residuals from least_square.
+            The output of least_square function, such as number of iteration per frames,
+            and the marker with highest residual
         """
         residuals_xyz = np.zeros((self.nb_markers * self.nb_dim, self.nb_frames))
         residuals = np.zeros((self.nb_markers, self.nb_frames))
         nfev = np.zeros(self.nb_frames)
         njev = np.zeros(self.nb_frames)
-
-        max_marker = [self.marker_names[i] for i in np.argmax(residuals, axis=0)]
-
-        message = [sol.message for i, sol in enumerate(self.list_sol)]
-        status = [sol.status for i, sol in enumerate(self.list_sol)]
-        success = [sol.success for i, sol in enumerate(self.list_sol)]
 
         for i in range(self.nb_frames):
             nfev[i] = self.list_sol[i].nfev
@@ -288,10 +287,10 @@ class StaticInverseKinematics:
             residuals_xyz=residuals_xyz,
             nfev=nfev,
             njev=njev,
-            max_marker=max_marker,
-            message=message,
-            status=status,
-            success=success,
+            max_marker=[self.marker_names[i] for i in np.argmax(residuals, axis=0)],
+            message=[sol.message for i, sol in enumerate(self.list_sol)],
+            status=[sol.status for i, sol in enumerate(self.list_sol)],
+            success=[sol.success for i, sol in enumerate(self.list_sol)],
         )
 
         return self.output
